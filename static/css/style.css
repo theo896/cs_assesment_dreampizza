@@ -168,6 +168,7 @@
   @media (max-width:520px){ .choice-row{grid-template-columns:1fr;} }
 
   .choice-card{
+    position:relative;
     text-align:left;
     background:rgba(250,246,238,0.03);
     border:1.5px solid rgba(250,246,238,0.16);
@@ -179,9 +180,48 @@
   }
   .choice-card:hover{border-color:var(--mustard); transform:translateY(-1px);}
   .choice-card.selected{border-color:var(--sauce); background:rgba(193,67,42,0.14);}
+  /* Non-colour selection cue (accessibility fix, Sprint 2): a checkmark
+     badge on top of the colour change, so selection doesn't rely on
+     colour perception alone. Mirrors the checkmark already used on
+     completed stepper chips. */
+  .choice-card.selected::after{
+    content:"✓";
+    position:absolute;
+    top:-8px; right:-8px;
+    width:22px; height:22px;
+    border-radius:50%;
+    background:var(--sauce);
+    color:var(--paper);
+    font-size:12px;
+    font-weight:800;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 1px 4px rgba(0,0,0,0.4);
+  }
   .choice-card .ico{font-size:22px; display:block; margin-bottom:8px;}
   .choice-card .ttl{font-weight:700; font-size:16px; display:block;}
   .choice-card .desc{font-size:12.5px; color:rgba(250,246,238,0.55); display:block; margin-top:3px;}
+
+  /* Non-colour selection cue (Sprint 2 accessibility fix): a checkmark
+     badge on the selected card, so selection isn't communicated by
+     colour alone. Mirrors the checkmark already used on done stepper
+     chips, for visual consistency. */
+  .choice-card .check-badge{
+    display:none;
+    position:absolute;
+    top:-8px; right:-8px;
+    width:22px; height:22px;
+    border-radius:50%;
+    background:var(--sauce);
+    color:var(--paper);
+    font-size:12px;
+    font-weight:800;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 1px 4px rgba(0,0,0,0.4);
+  }
+  .choice-card.selected .check-badge{display:flex;}
 
   label.field{display:block; margin-bottom:16px;}
   label.field span{
