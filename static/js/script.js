@@ -197,9 +197,9 @@
       <h2 class="step-title">How many pizzas?</h2>
       <p class="step-sub">Maximum ${MAX_PIZZAS} pizzas per phone order.</p>
       <div class="pizza-count-row">
-        <button class="stepper-btn" id="btnMinus" type="button" ${count<=1?"disabled":""}>−</button>
-        <div class="pizza-count-display">${count}</div>
-        <button class="stepper-btn" id="btnPlus" type="button" ${count>=MAX_PIZZAS?"disabled":""}>+</button>
+        <button class="stepper-btn" id="btnMinus" type="button" aria-label="Decrease pizza count" ${count<=1?"disabled":""}>−</button>
+<div class="pizza-count-display" aria-live="polite">${count}</div>
+<button class="stepper-btn" id="btnPlus" type="button" aria-label="Increase pizza count" ${count>=MAX_PIZZAS?"disabled":""}>+</button>
       </div>
       <div class="actions-row">
         <button class="btn btn-ghost" id="btnBack" type="button">Back</button>
