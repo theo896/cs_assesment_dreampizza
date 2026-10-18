@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dream Pizzas — Phone Order Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Work+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="shell">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">DP</div>
+      <div>
+        <h1>Dream Pizzas</h1>
+        <p>Phone Order Terminal</p>
+      </div>
+    </div>
+    <div class="rail-count" id="railCounter">Orders taken today: <b>0</b></div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: working form -->
+    <div class="panel" id="formPanel">
+
+      <div class="stepper" id="stepperBar"></div>
+
+      <div class="mini-bar" id="miniBar"></div>
+
+      <div id="stepContent"></div>
+
+    </div>
+
+    <!-- RIGHT: live docket + order rail -->
+    <div>
+      <div class="docket-wrap">
+        <div class="docket-label">Live docket preview</div>
+        <div class="docket" id="docket"></div>
+
+        <div class="order-rail" id="orderRailBox"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
