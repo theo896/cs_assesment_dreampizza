@@ -207,21 +207,7 @@
      badge on the selected card, so selection isn't communicated by
      colour alone. Mirrors the checkmark already used on done stepper
      chips, for visual consistency. */
-  .choice-card .check-badge{
-    display:none;
-    position:absolute;
-    top:-8px; right:-8px;
-    width:22px; height:22px;
-    border-radius:50%;
-    background:var(--sauce);
-    color:var(--paper);
-    font-size:12px;
-    font-weight:800;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 1px 4px rgba(0,0,0,0.4);
-  }
-  .choice-card.selected .check-badge{display:flex;}
+ 
 
   label.field{display:block; margin-bottom:16px;}
   label.field span{
