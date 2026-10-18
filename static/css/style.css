@@ -203,12 +203,6 @@
   .choice-card .ttl{font-weight:700; font-size:16px; display:block;}
   .choice-card .desc{font-size:12.5px; color:rgba(250,246,238,0.55); display:block; margin-top:3px;}
 
-  /* Non-colour selection cue (Sprint 2 accessibility fix): a checkmark
-     badge on the selected card, so selection isn't communicated by
-     colour alone. Mirrors the checkmark already used on done stepper
-     chips, for visual consistency. */
- 
-
   label.field{display:block; margin-bottom:16px;}
   label.field span{
     display:block;
@@ -283,8 +277,20 @@
     transition:border-color .15s ease, background .15s ease;
   }
   .menu-item:hover{border-color:var(--mustard); background:rgba(217,164,65,0.08);}
+  /* Non-colour "already in this order" cue: a pizza picked for an earlier
+     slot gets a tinted border plus an explicit checkmark + text tag, not
+     just a colour change, so a repeat is visible either way. */
+  .menu-item.picked{border-color:var(--sauce); background:rgba(193,67,42,0.1);}
   .menu-item .mi-left{display:flex; flex-direction:column; gap:4px;}
   .menu-item .mi-name{font-weight:600; font-size:14.5px;}
+  .menu-item .picked-tag{
+    font-family:'Space Mono', monospace;
+    font-size:9.5px;
+    font-weight:700;
+    letter-spacing:0.03em;
+    color:var(--sauce);
+    width:fit-content;
+  }
   .menu-item .badge{
     font-family:'Space Mono', monospace;
     font-size:9.5px;

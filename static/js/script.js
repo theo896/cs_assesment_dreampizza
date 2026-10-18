@@ -32,15 +32,18 @@
     return "$" + amount.toFixed(2);
   }
 
-  // non-basic string manipulation: strips non-digits and checks length
+  // non-basic string manipulation: rejects anything but digits and common
+  // phone separators (space, hyphen, brackets, leading +), then checks
+  // the digit count. Fixes a bug where letters mixed into the input
+  // (e.g. a mistyped or garbled entry) were silently stripped out and
+  // the remaining digits still counted as a "valid" phone number.
   function isValidPhone(str){
-  const trimmed = str.trim();
-  const allowedCharsOnly = /^[0-9 +\-()]+$/.test(trimmed);
-  if(!allowedCharsOnly) return false;
-  const digitsOnly = trimmed.replace(/[^0-9]/g, "");
-  return digitsOnly.length >= 7 && digitsOnly.length <= 11;
-}
-  
+    const trimmed = str.trim();
+    const allowedCharsOnly = /^[0-9 +\-()]+$/.test(trimmed);
+    if(!allowedCharsOnly) return false;
+    const digitsOnly = trimmed.replace(/[^0-9]/g, "");
+    return digitsOnly.length >= 7 && digitsOnly.length <= 11;
+  }
 
   function isValidName(str){
     return str.trim().length >= 2;
@@ -198,8 +201,8 @@
       <p class="step-sub">Maximum ${MAX_PIZZAS} pizzas per phone order.</p>
       <div class="pizza-count-row">
         <button class="stepper-btn" id="btnMinus" type="button" aria-label="Decrease pizza count" ${count<=1?"disabled":""}>−</button>
-<div class="pizza-count-display" aria-live="polite">${count}</div>
-<button class="stepper-btn" id="btnPlus" type="button" aria-label="Increase pizza count" ${count>=MAX_PIZZAS?"disabled":""}>+</button>
+        <div class="pizza-count-display" aria-live="polite">${count}</div>
+        <button class="stepper-btn" id="btnPlus" type="button" aria-label="Increase pizza count" ${count>=MAX_PIZZAS?"disabled":""}>+</button>
       </div>
       <div class="actions-row">
         <button class="btn btn-ghost" id="btnBack" type="button">Back</button>
@@ -210,11 +213,17 @@
   }
 
   function stepSelectHTML(){
+    // Non-colour "already in this order" cue: pizzas already picked for an
+    // earlier slot get a checkmark badge directly in the menu (in addition
+    // to the picked-pill list below), so repeats are visible without
+    // relying on colour alone.
+    const pickedNames = new Set(order.pizzas.map(p => p.name));
     const menuHTML = menu.map(p => `
-      <button type="button" class="menu-item" data-index="${p.index}">
+      <button type="button" class="menu-item ${pickedNames.has(p.name) ? "picked" : ""}" data-index="${p.index}">
         <div class="mi-left">
           <span class="mi-name">${p.name}</span>
           <span class="badge ${p.category}">${p.category}</span>
+          ${pickedNames.has(p.name) ? `<span class="picked-tag">✓ Already in order</span>` : ""}
         </div>
         <span class="mi-price">${formatCurrency(p.price)}</span>
       </button>
