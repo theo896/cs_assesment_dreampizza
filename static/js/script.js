@@ -1,59 +1,47 @@
 /* ============================================================
-     DATA: pizza menu — a collection of objects.
-     First 7 = regular ($8.50). Remaining 5 = gourmet (+$5).
+     Dream Pizzas phone order terminal - browser side.
+     This file only draws the screens and reacts to clicks. The menu,
+     prices, validation, totals and saved orders all come from the Flask
+     server (app.py) through the /api routes.
      ============================================================ */
-  const REGULAR_PRICE = 8.50;
-  const GOURMET_SURCHARGE = 5.00;
-  const DELIVERY_CHARGE = 3.00;
-  const MAX_PIZZAS = 5;
 
-  const menu = [
-    { name: "Margherita Classic",     category: "regular" },
-    { name: "Pepperoni Feast",        category: "regular" },
-    { name: "Hawaiian Breeze",        category: "regular" },
-    { name: "Garden Vegetarian",      category: "regular" },
-    { name: "Meat Lovers",            category: "regular" },
-    { name: "BBQ Chicken",            category: "regular" },
-    { name: "Four Cheese",            category: "regular" },
-    { name: "Smoked Salmon & Dill",   category: "gourmet" },
-    { name: "Truffle Mushroom",       category: "gourmet" },
-    { name: "Prosciutto & Rocket",    category: "gourmet" },
-    { name: "Mediterranean Lamb",     category: "gourmet" },
-    { name: "Spicy Nduja Diavola",    category: "gourmet" },
-  ].map((p, i) => ({ ...p, index: i, price: getPriceForIndex(i) }));
+  // Filled in from /api/config when the page loads.
+  let menu = [];
+  let MAX_PIZZAS = 0;
+  let DELIVERY_CHARGE = 0;
 
-  // function with a parameter and a return value
-  function getPriceForIndex(index){
-    return index < 7 ? REGULAR_PRICE : (REGULAR_PRICE + GOURMET_SURCHARGE);
+  // Send a request to the server and return { ok, data }.
+  // POST when a body is given, GET otherwise.
+  async function api(path, body){
+    const options = body === undefined ? {} : {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    };
+    try {
+      const response = await fetch(path, options);
+      return { ok: response.ok, data: await response.json() };
+    } catch (error) {
+      window.alert("Could not reach the order server. Is it running?");
+      return { ok: false, data: {} };
+    }
   }
 
+  // non-basic string manipulation: fixed decimals + currency symbol
   function formatCurrency(amount){
-    // non-basic string manipulation: fixed decimals + currency symbol
     return "$" + amount.toFixed(2);
   }
 
-  // non-basic string manipulation: rejects anything but digits and common
-  // phone separators (space, hyphen, brackets, leading +), then checks
-  // the digit count. Fixes a bug where letters mixed into the input
-  // (e.g. a mistyped or garbled entry) were silently stripped out and
-  // the remaining digits still counted as a "valid" phone number.
-  function isValidPhone(str){
-    const trimmed = str.trim();
-    const allowedCharsOnly = /^[0-9 +\-()]+$/.test(trimmed);
-    if(!allowedCharsOnly) return false;
-    const digitsOnly = trimmed.replace(/[^0-9]/g, "");
-    return digitsOnly.length >= 7 && digitsOnly.length <= 11;
-  }
-
-  function isValidName(str){
-    return str.trim().length >= 2;
+  // function with a parameter and a return value: "1 pizza" / "3 pizzas"
+  function pizzaLabel(count){
+    return `${count} pizza${count > 1 ? "s" : ""}`;
   }
 
   /* ============================================================
      STATE
      ============================================================ */
   let order = freshOrder();
-  let orderRail = [];      // collection of completed orders
+  let orderRail = [];      // collection of completed orders (from the server)
   let step = "type";       // type | details | count | select | summary | closing
   let slotIndex = 0;       // which pizza (0-based) we're currently choosing
 
@@ -64,20 +52,18 @@
       address: "",
       phone: "",
       pizzaCount: null,   // numeric
-      pizzas: []           // collection, modified as pizzas are chosen
+      pizzas: [],         // collection, modified as pizzas are chosen
+      summary: { subtotal: 0, delivery_charge: 0, total: 0 }   // worked out by the server
     };
   }
 
-  /* ============================================================
-     TOTAL / SUMMARY HELPERS
-     ============================================================ */
-  function calculateSubtotal(pizzas){
-    return pizzas.reduce((sum, p) => sum + p.price, 0);
-  }
-
-  function calculateTotal(pizzas, isDelivery){
-    const subtotal = calculateSubtotal(pizzas);
-    return isDelivery ? subtotal + DELIVERY_CHARGE : subtotal;
+  // Ask the server for the totals of the pizzas picked so far.
+  async function refreshSummary(){
+    const result = await api("/api/summary", {
+      pizza_indices: order.pizzas.map(p => p.index),
+      is_delivery: Boolean(order.isDelivery)
+    });
+    if(result.ok) order.summary = result.data;
   }
 
   /* ============================================================
@@ -111,9 +97,8 @@
   function renderMiniBar(){
     const bar = document.getElementById("miniBar");
     if((step === "select" || step === "summary") && order.pizzas.length > 0){
-      const total = calculateTotal(order.pizzas, order.isDelivery);
       bar.style.display = "flex";
-      bar.innerHTML = `<span>${order.pizzas.length} pizza${order.pizzas.length>1?"s":""} added</span><span>${formatCurrency(total)}</span>`;
+      bar.innerHTML = `<span>${pizzaLabel(order.pizzas.length)} added</span><span>${formatCurrency(order.summary.total)}</span>`;
     } else {
       bar.style.display = "none";
     }
@@ -279,10 +264,6 @@
     const d = document.getElementById("docket");
     d.className = "docket" + (printed ? " printed" : "");
 
-    if(step === "type" || (step==="type")){
-      // no selections yet
-    }
-
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     const dateStr = now.toLocaleDateString([], {day:'2-digit', month:'short'});
@@ -319,11 +300,10 @@
           </div>
         `).join("") + `</div>`;
 
-        const subtotal = calculateSubtotal(order.pizzas);
-        const total = calculateTotal(order.pizzas, order.isDelivery);
+        const { subtotal, delivery_charge, total } = order.summary;   // calculated by the server
         totalsHTML = `<div class="docket-totals">
           <div class="row"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
-          ${order.isDelivery ? `<div class="row"><span>Delivery charge</span><span>${formatCurrency(DELIVERY_CHARGE)}</span></div>` : ""}
+          ${order.isDelivery ? `<div class="row"><span>Delivery charge</span><span>${formatCurrency(delivery_charge)}</span></div>` : ""}
           <div class="row total"><span>Total</span><span>${formatCurrency(total)}</span></div>
         </div>`;
       }
@@ -356,7 +336,7 @@
     box.innerHTML = `<div class="docket-label" style="margin-top:22px;">Completed this session</div>` +
       orderRail.slice().reverse().map(o => `
         <div class="rail-item">
-          <span><b>${o.name}</b> · ${o.isDelivery ? "Delivery" : "Pickup"} · ${o.pizzas.length} pizza${o.pizzas.length>1?"s":""}</span>
+          <span><b>${o.name}</b> · ${o.is_delivery ? "Delivery" : "Pickup"} · ${pizzaLabel(o.pizzas.length)}</span>
           <span>${formatCurrency(o.total)}</span>
         </div>
       `).join("");
@@ -371,8 +351,9 @@
 
     if(step === "type"){
       document.querySelectorAll(".choice-card").forEach(card => {
-        card.addEventListener("click", () => {
+        card.addEventListener("click", async () => {
           order.isDelivery = card.dataset.type === "delivery";
+          await refreshSummary();   // the delivery charge depends on the order type
           step = "details";
           renderStep();
         });
@@ -402,9 +383,10 @@
         step = "details";
         renderStep();
       });
-      document.getElementById("btnNext").addEventListener("click", () => {
+      document.getElementById("btnNext").addEventListener("click", async () => {
         order.pizzaCount = order.pizzaCount || 1;
         order.pizzas = [];
+        await refreshSummary();
         slotIndex = 0;
         step = "select";
         renderStep();
@@ -413,10 +395,11 @@
 
     if(step === "select"){
       document.querySelectorAll(".menu-item").forEach(item => {
-        item.addEventListener("click", () => {
+        item.addEventListener("click", async () => {
           const idx = parseInt(item.dataset.index, 10);
           const chosen = menu[idx];
-          order.pizzas.push({ name: chosen.name, price: chosen.price, category: chosen.category });
+          order.pizzas.push({ index: chosen.index, name: chosen.name, price: chosen.price, category: chosen.category });
+          await refreshSummary();
           if(slotIndex < order.pizzaCount - 1){
             slotIndex++;
             renderStep();
@@ -425,9 +408,10 @@
           }
         });
       });
-      document.getElementById("btnBack").addEventListener("click", () => {
+      document.getElementById("btnBack").addEventListener("click", async () => {
         if(order.pizzas.length > 0){
           order.pizzas.pop();
+          await refreshSummary();
           slotIndex = Math.max(0, slotIndex - 1);
           renderStep();
         } else {
@@ -438,12 +422,7 @@
     }
 
     if(step === "summary"){
-      document.getElementById("btnNewOrder").addEventListener("click", () => {
-        order = freshOrder();
-        slotIndex = 0;
-        step = "type";
-        renderStep();
-      });
+      document.getElementById("btnNewOrder").addEventListener("click", resetOrder);
       document.getElementById("btnExit").addEventListener("click", () => {
         step = "closing";
         renderStep();
@@ -451,80 +430,75 @@
     }
 
     if(step === "closing"){
-      document.getElementById("btnReopen").addEventListener("click", () => {
-        order = freshOrder();
-        slotIndex = 0;
-        step = "type";
-        renderStep();
-      });
+      document.getElementById("btnReopen").addEventListener("click", resetOrder);
     }
   }
 
-  function handleDetailsSubmit(){
-    let valid = true;
+  // Element ids for each field's input box and its error message.
+  const FIELD_IDS = {
+    name:    ["inputName", "errName"],
+    address: ["inputAddress", "errAddress"],
+    phone:   ["inputPhone", "errPhone"]
+  };
 
-    const nameInput = document.getElementById("inputName");
-    if(!isValidName(nameInput.value)){
-      nameInput.classList.add("err");
-      document.getElementById("errName").classList.add("show");
-      valid = false;
-    } else {
-      nameInput.classList.remove("err");
-      document.getElementById("errName").classList.remove("show");
-      order.name = nameInput.value.trim();
+  // Send the details to the server to be checked, then show or hide the error
+  // under each field. Moves on to the next step only if everything is valid.
+  async function handleDetailsSubmit(){
+    const values = {
+      name: document.getElementById("inputName").value,
+      address: order.isDelivery ? document.getElementById("inputAddress").value : "",
+      phone: order.isDelivery ? document.getElementById("inputPhone").value : ""
+    };
+    const result = await api("/api/validate-details", { is_delivery: Boolean(order.isDelivery), ...values });
+    if(!result.ok) return;
+
+    for(const [field, [inputId, errId]] of Object.entries(FIELD_IDS)){
+      const input = document.getElementById(inputId);
+      if(!input) continue;                      // address/phone only exist for delivery
+      const message = result.data.errors[field];
+      input.classList.toggle("err", Boolean(message));
+      const err = document.getElementById(errId);
+      err.classList.toggle("show", Boolean(message));
+      if(message) err.textContent = message;
     }
 
-    if(order.isDelivery){
-      const addrInput = document.getElementById("inputAddress");
-      const phoneInput = document.getElementById("inputPhone");
-
-      if(!addrInput.value.trim()){
-        addrInput.classList.add("err");
-        document.getElementById("errAddress").classList.add("show");
-        valid = false;
-      } else {
-        addrInput.classList.remove("err");
-        document.getElementById("errAddress").classList.remove("show");
-        order.address = addrInput.value.trim();
-      }
-
-      if(!isValidPhone(phoneInput.value)){
-        phoneInput.classList.add("err");
-        document.getElementById("errPhone").classList.add("show");
-        valid = false;
-      } else {
-        phoneInput.classList.remove("err");
-        document.getElementById("errPhone").classList.remove("show");
-        order.phone = phoneInput.value.trim();
-      }
-    }
-
-    if(valid){
+    if(result.data.valid){
+      order.name = values.name.trim();
+      order.address = values.address.trim();
+      order.phone = values.phone.trim();
       step = "count";
       renderStep();
     }
   }
 
-  function handleCancelOrder(){
-    const ok = window.confirm("Cancel this order? Everything entered so far will be lost.");
-    if(ok){
-      order = freshOrder();
-      slotIndex = 0;
-      step = "type";
-      renderStep();
-    }
+  // Clears the current order and returns to the first step.
+  function resetOrder(){
+    order = freshOrder();
+    slotIndex = 0;
+    step = "type";
+    renderStep();
   }
 
-  function finishOrder(){
-    const total = calculateTotal(order.pizzas, order.isDelivery);
-    orderRail.push({
+  function handleCancelOrder(){
+    const ok = window.confirm("Cancel this order? Everything entered so far will be lost.");
+    if(ok) resetOrder();
+  }
+
+  // Ask the server to check and save the finished order, then show the docket.
+  async function finishOrder(){
+    const saved = await api("/api/orders", {
       name: order.name,
-      isDelivery: order.isDelivery,
+      is_delivery: Boolean(order.isDelivery),
       address: order.address,
       phone: order.phone,
-      pizzas: order.pizzas.slice(),
-      total: total
+      pizza_indices: order.pizzas.map(p => p.index)
     });
+    if(!saved.ok){
+      window.alert("The server could not save this order. Please check the details and try again.");
+      return;
+    }
+    order.summary = saved.data;
+    orderRail = (await api("/api/orders")).data;
     renderOrderRail();
     step = "summary";
     renderStep();
@@ -534,5 +508,19 @@
   /* ============================================================
      INIT
      ============================================================ */
-  renderOrderRail();
-  renderStep();
+  async function init(){
+    const config = (await api("/api/config")).data;
+    if(!config.menu){
+      document.getElementById("stepContent").textContent =
+        "Could not load the menu. Please check that the server is running.";
+      return;
+    }
+    menu = config.menu;
+    MAX_PIZZAS = config.max_pizzas;
+    DELIVERY_CHARGE = config.delivery_charge;
+    orderRail = (await api("/api/orders")).data;
+    renderOrderRail();
+    renderStep();
+  }
+
+  init();
